@@ -13,8 +13,9 @@ const skills = atom({ plugin: 'session-hud', key: 'skills' } as const, [] as str
 const turnStart = atom({ plugin: 'session-hud', key: 'turnStart' } as const, 0)
 const tick = atom({ plugin: 'session-hud', key: 'tick' } as const, 0) // bumped by session.measure so the pane redraws on usage changes
 
-type Summary = { avail: number; pinned?: string[]; today: number; wk: number; todos: [string, string][]; week: { m: string; io: number; usd: number | null }[] }
-const C = { acc: '#9cb4d8', ok: '#87af87', warn: '#d7af5f', bad: '#d75f5f', dim: '#767676', fg: '#d0d0d0' }
+type Summary = { theme: Record<string, string>; avail: number; pinned?: string[]; today: number; wk: number; todos: [string, string][]; week: { m: string; io: number; usd: number | null }[] }
+const C0 = { acc: '#9cb4d8', ok: '#87af87', warn: '#d7af5f', bad: '#d75f5f', dim: '#767676', fg: '#d0d0d0' }
+const C = { ...C0 } // the active theme: overwritten from the summary file the status line writes (its `theme` hex values)
 const PHASE: Record<string, Phase> = { Edit: 'edit', Write: 'edit', MultiEdit: 'edit', NotebookEdit: 'edit', Bash: 'run', Read: 'read', Grep: 'read', Glob: 'read', WebFetch: 'read', WebSearch: 'read', Agent: 'agent', Task: 'agent' }
 const VERB: Record<Phase, string> = { edit: 'editing', run: 'running', read: 'reading', agent: 'delegating', other: 'working' }
 
@@ -33,14 +34,24 @@ function parseSummary(raw: string): Summary | null {
   let o: any; try { o = JSON.parse(raw) } catch { return null }
   if (!o || typeof o !== 'object') return null
   const arr = (v: unknown): any[] => (Array.isArray(v) ? v : [])
+  const theme: Record<string, string> = {}
+  for (const k of Object.keys(C0)) if (typeof o.theme?.[k] === 'string' && /^#[0-9a-f]{6}$/i.test(o.theme[k])) theme[k] = o.theme[k]
   return {
-    avail: num(o.avail), today: num(o.today), wk: num(o.wk),
+    theme, avail: num(o.avail), today: num(o.today), wk: num(o.wk),
     pinned: arr(o.pinned).filter(x => typeof x === 'string').map(cl).slice(0, 20),
     todos: arr(o.todos).filter(x => Array.isArray(x)).slice(0, 100).map(x => [cl(x[0]), cl(x[1])] as [string, string]),
     week: arr(o.week).filter(x => x && typeof x === 'object').slice(0, 4).map(x => ({ m: cl(x.m), io: num(x.io), usd: typeof x.usd === 'number' && Number.isFinite(x.usd) ? x.usd : null })),
   }
 }
 const short = (m: string) => cl(m).replace(/^claude-/, '').replace(/-(\d+)-(\d+)$/, '-$1.$2')
+
+let themeAt = 0
+// pick up the status line's theme (cached 5s); the Spinner and TurnDuration renders have no summary read of their own
+async function applyTheme($: { session: { id(): Promise<string> }; env: { get(n: string): Promise<string | undefined> }; fs: { read(p: string): Promise<string> } }) {
+  if (Date.now() - themeAt < 5000) return
+  themeAt = Date.now()
+  try { const sid = await $.session.id(), home = await $.env.get('HOME'); Object.assign(C, C0, parseSummary(await $.fs.read(`${home}/.claude/session-hud/state/${sid.replace(/[^\w-]/g, '')}.summary.json`))?.theme) } catch { /* keep the current colors */ }
+}
 
 function labelOf(tool: string, a: Record<string, unknown>): string {
   const s = (k: string) => (typeof a[k] === 'string' ? (a[k] as string) : '')
@@ -121,6 +132,7 @@ export const register: Register = on => {
     const [model, u, l, ag, sk, now, turns, repo] = await Promise.all([$.session.model(), $.session.usage({ breakdown: 'summary' }), read($, log), read($, agents), read($, skills), $.clock.now(), $.session.turns(), $.session.repo().catch(() => null), read($, tick)])
     let sm: Summary | null = null
     try { sm = parseSummary(await $.fs.read(`${home}/.claude/session-hud/state/${sid.replace(/[^\w-]/g, '')}.summary.json`)) } catch { sm = null }
+    Object.assign(C, C0, sm?.theme); themeAt = Date.now()
     const W = Math.max(20, e.props.bodyColumns), rows = e.props.scroll?.bodyRows ?? e.viewport?.rows ?? 30
     const H = (s: string, extra = '') => <Text color={C.acc} bold wrap="truncate-end">{`▌ ${s}`}<Text color={C.dim} bold={false}>{extra}</Text></Text>
     const Bar = ({ pct, w }: { pct: number; w?: number }) => { const [c, f, r] = bar(pct, w ?? Math.min(14, W - 10)); return <Text><Text color={c}>{f}</Text><Text color={C.dim}>{r}</Text><Text color={C.fg}>{` ${Math.round(pct)}%`}</Text></Text> }
@@ -197,6 +209,7 @@ export const register: Register = on => {
   // ---------- working line under the spinner ----------
   on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
     if (e.surface !== 'terminal') return next(e)
+    await applyTheme($)
     const spinner = await next(e)
     const { Box, Text } = $.ui.resolve(e)
     const [t0, l, now] = await Promise.all([read($, turnStart), read($, log), $.clock.now()])
@@ -222,6 +235,7 @@ export const register: Register = on => {
   // ---------- job-complete line (replaces "Baked for 3s") ----------
   on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => {
     if (e.surface !== 'terminal' || e.props.isExpanded || e.props.waitingFor) return next(e)
+    await applyTheme($)
     const { Box, Text } = $.ui.resolve(e)
     const job = [...(await read($, jobs))].reverse().find(j => Math.abs(j.ms - e.props.durationMs) < 1500)
     const tone = !job ? C.ok : job.aborted ? C.warn : job.errors ? C.bad : C.ok
