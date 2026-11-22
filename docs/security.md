@@ -61,7 +61,7 @@ The pane's live activity list is built in the mod from `tool.call` events and ca
 | `clean()` | all untrusted strings in the renderer; `cl()` in the pane | removes tabs and newlines, C0, DEL, C1 and bidi override characters, so no escape sequence or spoofed text reaches the terminal |
 | `sgrOnly()` | last step of every render | strips every control character and any ESC that is not an SGR color sequence |
 | `noProto()`, key checks | config and `config set` | drops `__proto__`, `constructor`, `prototype`; ledger writes also skip a `__proto__` model |
-| theme validation | config | theme values must be digits and semicolons |
+| theme validation | config | a color must be `#rrggbb` or digits and semicolons, a preset name is looked up in a fixed table; anything else is ignored, so a theme cannot inject escape sequences. The pane re-validates the hex values it reads from the summary file |
 | permissions | all state | dir 0700, files 0600, temp files created with exclusive flag and renamed, so a planted symlink at the temp name is not followed |
 | strict JSON | `install`, `uninstall`, `config` | a settings or config file that does not parse as a JSON object is never rewritten; the command exits 1 |
 | symlinks | settings and ledger | a project-local settings symlink is refused. For `--user` a symlinked `settings.json` is resolved and its real target is replaced atomically, keeping its mode. The `.hud-bak` and `report.md` paths replace a symlink instead of writing through it. The transcript walk ignores symlinked files and directories |

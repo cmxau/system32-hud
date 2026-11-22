@@ -40,7 +40,7 @@ All rows, pane blocks and layout modes: [docs/features.md](docs/features.md).
 Settings live in `~/.claude/session-hud.json`; every key is optional.
 
 ```json
-{ "mode": "auto", "dockCols": 110, "sections": ["model", "ctx", "limits", "cost", "week", "skills", "agents", "todos", "tools"],
+{ "theme": "monokai", "mode": "auto", "dockCols": 110, "sections": ["model", "ctx", "limits", "cost", "week", "skills", "agents", "todos", "tools"],
   "skills": { "pinned": ["ponytail"], "detect": true }, "bar": { "style": "blocks", "width": 10 } }
 ```
 
@@ -51,6 +51,8 @@ node src/hud.js config undo                   # restore the backup (last change 
 node src/hud.js replay                        # re-render the last status-line input
 node src/hud.js report                        # write a scrubbed bug report locally
 ```
+
+**Themes:** `default`, `monokai`, `abyss`, `solarized`, `matrix` (green on black), `dracula`, `nord`, `gruvbox`, `tokyo-night`, `synthwave`, `rose-pine`. List them with `node src/hud.js config themes`, switch with `config set theme=nord`.
 
 `SESSION_HUD_DISABLE=1` turns the HUD off for a session. Every key, default and env var: [docs/configuration.md](docs/configuration.md).
 
