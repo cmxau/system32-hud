@@ -182,4 +182,29 @@ t.test('detectPinned reads only the first 64 KB', () => {
     assert.equal(run(h, ['install', '--user', '--link']).status, 0);
     assert.ok(fs.lstatSync(link).isSymbolicLink() && JSON.parse(fs.readFileSync(real, 'utf8')).statusLine.type === 'command' && JSON.parse(fs.readFileSync(real, 'utf8')).theme === 'dark');
   });
+
+  t.test('themes: every preset is complete, overrides are validated, bg only where asked', () => {
+    const { THEMES, themeOf } = h;
+    assert.ok(Object.keys(THEMES).length >= 11 && ['default', 'monokai', 'abyss', 'solarized', 'matrix'].every(n => THEMES[n]));
+    for (const [n, th] of Object.entries(THEMES)) for (const k of ['dim', 'fg', 'acc', 'ok', 'warn', 'bad']) assert.match(th[k], /^#[0-9a-f]{6}$/i, n + '.' + k);
+    assert.deepEqual(themeOf(undefined), THEMES.default); assert.deepEqual(themeOf('nope'), THEMES.default); assert.deepEqual(themeOf('MONOKAI'), THEMES.monokai);
+    assert.equal(themeOf({ name: 'nord', acc: '#ff00ff' }).acc, '#ff00ff');
+    assert.equal(themeOf({ name: 'nord', acc: 'red; rm -rf' }).acc, THEMES.nord.acc); // junk ignored
+    assert.equal(themeOf('matrix').bg, '#000000'); assert.equal(themeOf({ name: 'matrix', bg: 'none' }).bg, undefined); assert.equal(themeOf('monokai').bg, undefined);
+  });
+  t.test('themes: colors reach the status line and the summary file; matrix paints full-width rows', () => {
+    const j = JSON.stringify({ session_id: 'th1', model: { id: 'claude-opus-5-5' }, context_window: { context_window_size: 2e5, used_percentage: 41 } });
+    const h1 = tmp(); fs.mkdirSync(path.join(h1, '.claude'), { recursive: true }); fs.writeFileSync(path.join(h1, '.claude', 'session-hud.json'), JSON.stringify({ theme: 'monokai' }));
+    const env = { NO_COLOR: '', COLUMNS: '50' }, out = run(h1, [], { input: j, env }).stdout;
+    assert.ok(out.includes('\x1b[38;2;102;217;239m') && !out.includes('\x1b[48;'), 'monokai accent, no bg');
+    const sum = JSON.parse(fs.readFileSync(path.join(h1, '.claude', 'session-hud', 'state', 'th1.summary.json'), 'utf8')); assert.equal(sum.theme.acc, '#66d9ef');
+    fs.writeFileSync(path.join(h1, '.claude', 'session-hud.json'), JSON.stringify({ theme: 'matrix' }));
+    const rows = run(h1, [], { input: j, env }).stdout.trimEnd().split('\n');
+    for (const r of rows) assert.ok(r.startsWith('\x1b[48;2;0;0;0m') && h.vis(r) === 50 && r.endsWith('\x1b[0m'), 'row painted and padded to 50');
+  });
+  t.test('config themes lists presets; theme= and theme.key= edit the config', () => {
+    const h2 = tmp(), list = run(h2, ['config', 'themes']).stdout; for (const n of ['monokai', 'abyss', 'solarized', 'matrix', 'default', 'dracula']) assert.ok(list.includes(n), n);
+    run(h2, ['config', 'set', 'theme=monokai']); run(h2, ['config', 'set', 'theme.acc=#ff00ff']);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(h2, '.claude', 'session-hud.json'), 'utf8')).theme, { name: 'monokai', acc: '#ff00ff' });
+  });
 }

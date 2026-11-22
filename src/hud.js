@@ -43,6 +43,28 @@ function cost(model, u) {
 const total = c => c ? c.i + c.o + c.c : 0;
 
 // ---------- config
+// ---------- themes: hex colors (24-bit); `bg` is optional and paints the whole status-line row. The pane reads the same hex values from the summary file.
+const THEME_KEYS = ['dim', 'fg', 'acc', 'ok', 'warn', 'bad'];
+const THEMES = {
+  default:      { dim: '#767676', fg: '#d0d0d0', acc: '#9cb4d8', ok: '#87af87', warn: '#d7af5f', bad: '#d75f5f' },
+  monokai:      { dim: '#75715e', fg: '#f8f8f2', acc: '#66d9ef', ok: '#a6e22e', warn: '#e6db74', bad: '#f92672' },
+  abyss:        { dim: '#384887', fg: '#9fb2dd', acc: '#6688cc', ok: '#22aa44', warn: '#ddbb88', bad: '#cc3366' },
+  solarized:    { dim: '#586e75', fg: '#93a1a1', acc: '#268bd2', ok: '#859900', warn: '#b58900', bad: '#dc322f' },
+  matrix:       { dim: '#4d4d4d', fg: '#9a9a9a', acc: '#00ff41', ok: '#00d936', warn: '#b6ff00', bad: '#ff5555', bg: '#000000' },
+  dracula:      { dim: '#6272a4', fg: '#f8f8f2', acc: '#bd93f9', ok: '#50fa7b', warn: '#f1fa8c', bad: '#ff5555' },
+  nord:         { dim: '#616e88', fg: '#d8dee9', acc: '#88c0d0', ok: '#a3be8c', warn: '#ebcb8b', bad: '#bf616a' },
+  gruvbox:      { dim: '#928374', fg: '#ebdbb2', acc: '#83a598', ok: '#b8bb26', warn: '#fabd2f', bad: '#fb4934' },
+  'tokyo-night': { dim: '#565f89', fg: '#c0caf5', acc: '#7aa2f7', ok: '#9ece6a', warn: '#e0af68', bad: '#f7768e' },
+  synthwave:    { dim: '#7a6a9e', fg: '#e0d7ff', acc: '#ff7edb', ok: '#72f1b8', warn: '#fede5d', bad: '#fe4450' },
+  'rose-pine':  { dim: '#6e6a86', fg: '#e0def4', acc: '#c4a7e7', ok: '#9ccfd8', warn: '#f6c177', bad: '#eb6f92' },
+};
+const COLOR = /^(#[0-9a-f]{6}|[\d;]{1,40})$/i; // hex, or a raw SGR parameter string
+// "theme": "monokai"  or  { "name": "monokai", "acc": "#ff00ff", "bg": "none" } (a key you give wins over the preset)
+const themeOf = t => { const o = t && typeof t === 'object' ? t : {}, out = { ...(THEMES[String(typeof t === 'string' ? t : o.name || 'default').toLowerCase()] || THEMES.default) };
+  for (const k of THEME_KEYS) if (typeof o[k] === 'string' && COLOR.test(o[k])) out[k] = o[k];
+  if (o.bg === 'none') delete out.bg; else if (typeof o.bg === 'string' && /^#[0-9a-f]{6}$/i.test(o.bg)) out.bg = o.bg; return out; };
+const rgb = (v, base) => v[0] === '#' ? `${base};2;${parseInt(v.slice(1, 3), 16)};${parseInt(v.slice(3, 5), 16)};${parseInt(v.slice(5), 16)}` : v;
+
 const DEFAULTS = {
   mode: 'auto',                       // auto | rows | compact
   density: 'default',                 // default | expanded
@@ -51,16 +73,17 @@ const DEFAULTS = {
   sections: ['model', 'ctx', 'limits', 'cost', 'week', 'skills', 'agents', 'todos', 'tools'], // order = row order; add 'project', 'uptime'
   bar: { style: 'blocks', width: 10 }, // blocks ▰▱ | solid █░ | ascii #-
   icons: { run: '◐', done: '✓', fail: '✗', skill: '●', rest: '↻', est: '~' },
-  theme: { dim: '38;5;243', fg: '38;5;252', acc: '38;2;156;180;216', ok: '38;5;108', warn: '38;5;179', bad: '38;5;167' },
+  theme: 'default',                    // a preset name (see `config themes`) or { name, dim, fg, acc, ok, warn, bad, bg } as #rrggbb
   skills: { pinned: [], detect: true }, // always-on skills: Claude Code gives no "loaded" signal, so list them (detect: also pick them up from CLAUDE.md)
   color: true,
 };
-const merge = u => (u = noProto(u && typeof u === 'object' ? u : {}), { ...DEFAULTS, ...u, bar: { ...DEFAULTS.bar, ...u.bar }, icons: { ...DEFAULTS.icons, ...u.icons }, theme: Object.fromEntries(Object.entries({ ...DEFAULTS.theme, ...u.theme }).map(([k, v]) => [k, /^[\d;]{1,40}$/.test(v) ? v : DEFAULTS.theme[k] || '0'])), skills: { ...DEFAULTS.skills, ...u.skills } });
+const merge = u => (u = noProto(u && typeof u === 'object' ? u : {}), { ...DEFAULTS, ...u, bar: { ...DEFAULTS.bar, ...u.bar }, icons: { ...DEFAULTS.icons, ...u.icons }, theme: themeOf(u.theme), skills: { ...DEFAULTS.skills, ...u.skills } });
 let cfg = merge(rd(CFG, {}));
 
 // ---------- tiny format helpers
 const ANSI = /\x1b\[[0-9;]*m/g;
-const col = (k, s) => (cfg.color && !process.env.NO_COLOR) ? `\x1b[${cfg.theme[k]}m${s}\x1b[0m` : String(s);
+const paint = () => cfg.color && !process.env.NO_COLOR;
+const col = (k, s) => paint() ? `\x1b[${rgb(cfg.theme[k], 38)}m${s}\x1b[${cfg.theme.bg ? rgb(cfg.theme.fg, 38) : 0}m` : String(s); // with a bg, fall back to the theme's text color, not the terminal's
 const vis = s => s.replace(ANSI, '').length;
 const tok = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(Math.round(n));
 const usd = n => '$' + (n >= 100 ? n.toFixed(0) : n.toFixed(2));
@@ -223,7 +246,10 @@ function detectPinned(cwd) {
 
 // ---------- render
 const sgrOnly = r => r.replace(/[\u0000-\u0008\u000b-\u001a\u001c-\u001f\u007f-\u009f]|\x1b(?!\[[0-9;]*m)/g, ''); // last line of defence: the only ESC allowed out is our own SGR color
-function render(j, cols) { return render0(j, cols).map(sgrOnly); }
+function render(j, cols) { const rows = render0(j, cols).map(sgrOnly), bg = cfg.theme.bg;
+  if (!bg || !paint()) return rows;
+  const on = `\x1b[${rgb(bg, 48)}m\x1b[${rgb(cfg.theme.fg, 38)}m`; // theme bg + text color: paint the whole row, re-applied after any full reset, padded to the terminal width
+  return rows.map(r => on + r.replace(/\x1b\[0m/g, '\x1b[0m' + on) + ' '.repeat(Math.max(0, cols - vis(r))) + '\x1b[0m'); }
 function render0(j, cols) {
   const S = fold(safeSid(j.session_id) || 'none'), L = ledger(), days = (L && L.days) || {};
   const ex = cfg.density === 'expanded', E = cfg.icons;
@@ -302,7 +328,7 @@ function render0(j, cols) {
   C.uptime = col('dim', 'up ') + (up ? dur(up) : '—'); R.uptime = lab('up') + (up ? dur(up) : '—') + col('dim', '  session wall-clock');
 
   if (!DRY && safeSid(j.session_id)) try { wr(path.join(STATE, safeSid(j.session_id) + '.summary.json'), { // read by the side pane (it has no transcript/hook access of its own)
-    avail: n, pinned: pins, today: dayCost[6], wk: wkTotal, todos: S.todos,
+    theme: Object.fromEntries(THEME_KEYS.filter(k => cfg.theme[k][0] === '#').map(k => [k, cfg.theme[k]])), avail: n, pinned: pins, today: dayCost[6], wk: wkTotal, todos: S.todos,
     week: ms.slice(0, 4).map(x => ({ m: short(x.m), io: x.io, usd: x.p.known ? x.p.i + x.p.o + x.p.c : null })) }); } catch {}
   const docked = cfg.mode === 'auto' && cfg.dockCols && cols >= cfg.dockCols;
   const mode = docked ? 'compact' : cfg.mode === 'auto' ? (cols >= 90 ? 'rows' : 'compact') : cfg.mode;
@@ -356,9 +382,11 @@ const setPath = (o, k, v) => { const p = k.split('.'); if (p.some(x => !x || BAD
 function configCmd([sub, ...kv]) {
   const bak = CFG + '.bak';
   if (sub === 'undo') { if (!fs.existsSync(bak)) return console.log('nothing to undo'); fs.copyFileSync(bak, CFG); fs.unlinkSync(bak); return console.log('restored previous ' + CFG); }
-  if (sub !== 'set' && sub !== 'preview') return console.log('usage: config preview|set key=value ... | config undo   (keys dotted, values JSON, e.g. mode=compact bar.width=8 sections=\'["model","ctx","todos"]\')');
+  if (sub === 'themes') { const c = (t, k, x) => paint() ? `\x1b[${rgb(t[k], 38)}m${x}\x1b[39m` : x;
+    return console.log(Object.entries(THEMES).map(([n, t]) => `${n.padEnd(12)} ${c(t, 'acc', '▌ acc')} ${c(t, 'fg', 'text')} ${c(t, 'dim', 'dim')} ${c(t, 'ok', 'ok')} ${c(t, 'warn', 'warn')} ${c(t, 'bad', 'bad')}${t.bg ? '  (paints a ' + t.bg + ' background)' : ''}`).join('\n') + '\n\nuse: config set theme=<name>   or   config set theme.acc=#ff00ff'); }
+  if (sub !== 'set' && sub !== 'preview') return console.log('usage: config themes | config preview|set key=value ... | config undo   (keys dotted, values JSON, e.g. mode=compact bar.width=8 sections=\'["model","ctx","todos"]\')');
   let u; try { u = rdStrict(CFG); } catch (e) { return fail(e); }
-  const next = noProto(u);
+  const next = noProto(u); if (typeof next.theme === 'string') next.theme = { name: next.theme }; // so theme.acc=... works on a named preset
   try { for (const a of kv) { const i = a.indexOf('='); if (i < 1) throw new Error(`expected key=value, got "${a}"`); let v = a.slice(i + 1); try { v = JSON.parse(v); } catch {} setPath(next, a.slice(0, i), noProto(v)); } } catch (e) { return fail(e); }
   cfg = merge(next); console.log(replay().join('\n'));
   if (sub === 'set') { if (fs.existsSync(CFG)) fs.copyFileSync(CFG, bak); wrUser(CFG, JSON.stringify(next, null, 2) + '\n', 0o600); console.log('\nsaved ' + CFG + ' (undo: config undo)'); }
@@ -394,4 +422,4 @@ if (require.main === module) {
     try { const j = JSON.parse(raw || '{}'); if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('bad input'); try { wr(LAST, j); } catch {} console.log(render(j, +process.env.COLUMNS || 100).join('\n')); }
     catch (e) { console.log(col('dim', 'session-hud: ' + e.message)); } }); }
 }
-module.exports = { clean, safeSid, setPath, rdStrict, shq, install, uninstall, configCmd, report, detectPinned, provider, toolArg, cost, fit, render, scan, vis, short };
+module.exports = { THEMES, themeOf, clean, safeSid, setPath, rdStrict, shq, install, uninstall, configCmd, report, detectPinned, provider, toolArg, cost, fit, render, scan, vis, short };
