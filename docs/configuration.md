@@ -15,7 +15,7 @@ From `DEFAULTS` in `src/hud.js`:
   "sections": ["model", "ctx", "limits", "cost", "week", "skills", "agents", "todos", "tools"],
   "bar": { "style": "blocks", "width": 10 },
   "icons": { "run": "◐", "done": "✓", "fail": "✗", "skill": "●", "rest": "↻", "est": "~" },
-  "theme": { "dim": "38;5;243", "fg": "38;5;252", "acc": "38;2;156;180;216", "ok": "38;5;108", "warn": "38;5;179", "bad": "38;5;167" },
+  "theme": "default",
   "skills": { "pinned": [], "detect": true },
   "color": true
 }
@@ -33,7 +33,7 @@ From `DEFAULTS` in `src/hud.js`:
 | `bar.style` | `blocks` (▰▱), `solid` (█░), `ascii` (#-) | unknown values fall back to `blocks` |
 | `bar.width` | number | width of ctx and limits bars. The `week` mini bars are fixed at 5 |
 | `icons` | `run`, `done`, `fail`, `skill`, `rest`, `est` | single glyphs or short strings |
-| `theme` | `dim`, `fg`, `acc`, `ok`, `warn`, `bad` | ANSI SGR parameters such as `38;5;141`. A value that is not digits and semicolons (1 to 40 characters) is ignored and the default is used |
+| `theme` | a preset name, or `{ "name": ..., "dim", "fg", "acc", "ok", "warn", "bad", "bg" }` | see [Themes](#themes). Colors are `#rrggbb` (or a raw SGR parameter string such as `38;5;141`); anything else is ignored and the preset's color is used |
 | `skills.pinned` | list of names | always shown as `○ name` |
 | `skills.detect` | boolean | also pin skills `CLAUDE.md` declares always on. Matches a sentence like "the `name` skill ... always / by default / active by default"; only the first 64 KB of the user, project and project-`.claude` files are read |
 | `color` | boolean | `false` disables color. `NO_COLOR` also disables it |
@@ -42,9 +42,32 @@ Keys named `__proto__`, `constructor` or `prototype` are dropped from config and
 
 The refresh interval is not here: it is `refreshInterval` (seconds) in the statusLine setting, written as 5 by `install`.
 
+## Themes
+
+`"theme": "monokai"` picks a preset. To tweak one, use an object: `{ "name": "monokai", "acc": "#ff00ff" }`; keys you give win over the preset. The status line and the side pane (and its working line and job-complete line) use the same colors; the pane picks them up from the summary file, within 5 seconds.
+
+| Preset | Feel |
+|---|---|
+| `default` | muted grey-blue, the original look |
+| `monokai` | cyan accent, green, yellow, pink |
+| `abyss` | deep blue, after the VS Code theme |
+| `solarized` | Solarized dark |
+| `matrix` | green tint on **black background**, grey text |
+| `dracula` | purple accent |
+| `nord` | cold blue-grey |
+| `gruvbox` | warm retro |
+| `tokyo-night` | blue-violet |
+| `synthwave` | neon pink and mint |
+| `rose-pine` | soft lilac and rose |
+
+`bg` (`#rrggbb`, or `"none"` to switch a preset's off) paints the status-line rows with a background, padded to the terminal width. Only `matrix` sets one by default. The pane does not paint a background; it keeps your terminal's. `color: false` and `NO_COLOR` turn all of it off.
+
+See them with `node src/hud.js config themes`; try one with `config preview theme=nord` and keep it with `config set theme=nord`; tweak one color with `config set theme.acc=#ff00ff`.
+
 ## Commands
 
 ```
+node src/hud.js config themes
 node src/hud.js config preview k=v [k=v ...]
 node src/hud.js config set k=v [k=v ...]
 node src/hud.js config undo

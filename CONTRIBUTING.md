@@ -48,6 +48,10 @@ All in `src/hud.js`:
 3. Add it to the README tables (what you see, config `sections`, where the number comes from, with caveats).
 4. Add a test in `tests/test.js`.
 
+## Add a theme
+
+Add an entry to `THEMES` in `src/hud.js`: the six keys `dim`, `fg`, `acc`, `ok`, `warn`, `bad` as `#rrggbb` (and `bg` only if the theme should paint the row). Add it to the preset table in `docs/configuration.md`. The tests check every preset is complete.
+
 ## Add a pane block
 
 - Add the block in the `Pane` render handler in `hooks/register.tsx`, in the same flat style.
