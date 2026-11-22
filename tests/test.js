@@ -187,6 +187,7 @@ t.test('detectPinned reads only the first 64 KB', () => {
     const { THEMES, themeOf } = h;
     assert.ok(Object.keys(THEMES).length >= 11 && ['default', 'monokai', 'abyss', 'solarized', 'matrix'].every(n => THEMES[n]));
     for (const [n, th] of Object.entries(THEMES)) for (const k of ['dim', 'fg', 'acc', 'ok', 'warn', 'bad']) assert.match(th[k], /^#[0-9a-f]{6}$/i, n + '.' + k);
+    for (const bad of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) assert.deepEqual(themeOf(bad), THEMES.default, bad); // names are looked up as own keys only
     assert.deepEqual(themeOf(undefined), THEMES.default); assert.deepEqual(themeOf('nope'), THEMES.default); assert.deepEqual(themeOf('MONOKAI'), THEMES.monokai);
     assert.equal(themeOf({ name: 'nord', acc: '#ff00ff' }).acc, '#ff00ff');
     assert.equal(themeOf({ name: 'nord', acc: 'red; rm -rf' }).acc, THEMES.nord.acc); // junk ignored
