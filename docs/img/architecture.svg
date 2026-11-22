@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" width="1000" height="640" role="img" aria-labelledby="arch-title arch-desc">
-<title id="arch-title">session-hud architecture</title>
-<desc id="arch-desc">Components of session-hud: Claude Code feeds the renderer through stdin JSON and the hook recorder through hook payloads; both share files under ~/.claude/session-hud; the renderer writes a summary file that the pane reads.</desc>
+<title id="arch-title">system32-hud architecture</title>
+<desc id="arch-desc">Components of system32-hud: Claude Code feeds the renderer through stdin JSON and the hook recorder through hook payloads; both share files under ~/.claude/system32-hud; the renderer writes a summary file that the pane reads.</desc>
 <defs>
 <marker id="arch-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#4f5d75"/></marker>
 <marker id="arch-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#eb6c36"/></marker>

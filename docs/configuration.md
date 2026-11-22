@@ -1,6 +1,6 @@
 # Configuration
 
-Config lives in `~/.claude/session-hud.json`. Every key is optional; a missing or unreadable file means all defaults. Values are merged over the defaults below: `bar`, `icons`, `theme` and `skills` merge key by key, all other keys replace the default.
+Config lives in `~/.claude/system32-hud.json`. Every key is optional; a missing or unreadable file means all defaults. Values are merged over the defaults below: `bar`, `icons`, `theme` and `skills` merge key by key, all other keys replace the default.
 
 ## Defaults
 
@@ -88,11 +88,11 @@ node src/hud.js config set sections='["model","ctx","todos"]'
 | Command | Behavior |
 |---|---|
 | `config preview` | renders the last real input (`last-input.json`) with the change and saves nothing. Read-only: no summary, scan or cache writes |
-| `config set` | the same preview, then copies the current file to `session-hud.json.bak` and writes the new file atomically (0600 if new; an existing file keeps its mode; a symlink is written through to its target). The new file is your existing file plus the changed keys, not the merged defaults |
-| `config undo` | restores `session-hud.json.bak` and deletes it, so it reverts only the last `set` |
+| `config set` | the same preview, then copies the current file to `system32-hud.json.bak` and writes the new file atomically (0600 if new; an existing file keeps its mode; a symlink is written through to its target). The new file is your existing file plus the changed keys, not the merged defaults |
+| `config undo` | restores `system32-hud.json.bak` and deletes it, so it reverts only the last `set` |
 | `replay` | prints the last status-line input rendered with current config at `$COLUMNS` (100 if unset). Says to send a message first if nothing was captured |
-| `report` | like `replay`, plus config and the last input, scrubbed, printed and written to `~/.claude/session-hud/report.md` (0600). See [security](security.md#report) |
-| `install` | sets `statusLine` to `node "<hud.js>"` with `refreshInterval: 5`. Without `--user` it edits `./.claude/settings.local.json`; `--user` edits `~/.claude/settings.json`. Copies `hud.js` to `~/.claude/session-hud/hud.js` unless `--link`. Writes `<settings>.hud-bak` first and `prev-statusline.json` if you had another statusLine (not with `--link`). Paths with shell-special characters are single-quoted |
+| `report` | like `replay`, plus config and the last input, scrubbed, printed and written to `~/.claude/system32-hud/report.md` (0600). See [security](security.md#report) |
+| `install` | sets `statusLine` to `node "<hud.js>"` with `refreshInterval: 5`. Without `--user` it edits `./.claude/settings.local.json`; `--user` edits `~/.claude/settings.json`. Copies `hud.js` to `~/.claude/system32-hud/hud.js` unless `--link`. Writes `<settings>.hud-bak` first and `prev-statusline.json` if you had another statusLine (not with `--link`). Paths with shell-special characters are single-quoted |
 | `uninstall` | restores the saved statusLine if it was saved for that same settings file, otherwise removes `statusLine`. Writes no backup |
 
 `install`, `uninstall` and `config preview|set` print the error and exit 1, changing nothing, when the existing file is not valid JSON or not an object. `install` and `uninstall` refuse a project-local settings symlink (exit 1). `config` also exits 1 for a bad key or a missing `=`. Settings writes are atomic and keep the file's mode (new settings files 0644); `--user` writes through a symlinked `settings.json` to its real target.
@@ -101,8 +101,8 @@ node src/hud.js config set sections='["model","ctx","todos"]'
 
 | Variable | Effect |
 |---|---|
-| `SESSION_HUD_DISABLE` | `1`, `true`, `yes` or `on` (any case) turns off the status-line render (it prints an empty line) and the hooks. Anything else, including `0` and empty, leaves them on. `install`, `uninstall`, `config`, `replay`, `report` and `scan` are unaffected |
-| `SESSION_HUD_DEBUG` | exactly `1` makes the hook also append the raw payload of `skill`, `astart`, `astop` and `model` events to `~/.claude/session-hud/debug.jsonl` (0600, appends stop once the file passes 200 KB). Raw payloads can contain prompts and tool inputs; delete the file when done |
+| `SYSTEM32_HUD_DISABLE` | `1`, `true`, `yes` or `on` (any case) turns off the status-line render (it prints an empty line) and the hooks. Anything else, including `0` and empty, leaves them on. `install`, `uninstall`, `config`, `replay`, `report` and `scan` are unaffected |
+| `SYSTEM32_HUD_DEBUG` | exactly `1` makes the hook also append the raw payload of `skill`, `astart`, `astop` and `model` events to `~/.claude/system32-hud/debug.jsonl` (0600, appends stop once the file passes 200 KB). Raw payloads can contain prompts and tool inputs; delete the file when done |
 | `NO_COLOR` | disables color |
 | `COLUMNS` | width used for mode selection; 100 if unset |
 | `CLAUDE_CODE_USE_BEDROCK`, `_VERTEX`, `_FOUNDRY`, `ANTHROPIC_BASE_URL` | read only to label the provider; for the base URL only the host name is used |

@@ -1,13 +1,13 @@
 # Contributing
 
-session-hud is a Claude Code plugin: a status line (`src/hud.js`) plus a side pane and working line (`hooks/register.tsx`). Small, focused PRs are welcome.
+system32-hud is a Claude Code plugin: a status line (`src/hud.js`) plus a side pane and working line (`hooks/register.tsx`). Small, focused PRs are welcome.
 
 ## Design rules
 
 - The status line is one zero-dependency Node file, `src/hud.js`. No `package.json` dependencies, no build step.
 - No network calls, no telemetry. Ever.
-- Treat hook payloads, transcripts, repo and file names as untrusted: run strings through `clean()` before rendering, build state paths only with `safeSid()`, and never record Bash commands or raw payloads (`debug.jsonl` is opt-in via `SESSION_HUD_DEBUG=1`).
-- State lives only under `~/.claude/session-hud/` (plus `~/.claude/session-hud.json` and its `.bak` for config, and the settings file `install` edits with a `.hud-bak` beside it). Write state with `wr()`/`wrText()` (atomic, 0600), user files with `wrUser()`. `install` copies `hud.js` into the state dir, so a changed `src/hud.js` only reaches the status line after `install` is re-run (or use `install --link` while developing).
+- Treat hook payloads, transcripts, repo and file names as untrusted: run strings through `clean()` before rendering, build state paths only with `safeSid()`, and never record Bash commands or raw payloads (`debug.jsonl` is opt-in via `SYSTEM32_HUD_DEBUG=1`).
+- State lives only under `~/.claude/system32-hud/` (plus `~/.claude/system32-hud.json` and its `.bak` for config, and the settings file `install` edits with a `.hud-bak` beside it). Write state with `wr()`/`wrText()` (atomic, 0600), user files with `wrUser()`. `install` copies `hud.js` into the state dir, so a changed `src/hud.js` only reaches the status line after `install` is re-run (or use `install --link` while developing).
 - `replay`, `report` and `config preview` must stay read-only: anything that writes or spawns in `render()` has to check `DRY`.
 - Hooks run async and must never fail loudly: swallow errors, never block Claude Code.
 - Estimates are marked with `~` (`—` for unavailable), and every caveat goes in the README's "Where each number comes from" table.
@@ -55,7 +55,7 @@ Add an entry to `THEMES` in `src/hud.js`: the six keys `dim`, `fg`, `acc`, `ok`,
 ## Add a pane block
 
 - Add the block in the `Pane` render handler in `hooks/register.tsx`, in the same flat style.
-- Data the pane can't read itself (no transcript or hook access) goes through the summary file: `render()` in `src/hud.js` writes `~/.claude/session-hud/state/<session>.summary.json`, and the `Summary` type in `register.tsx` reads it.
+- Data the pane can't read itself (no transcript or hook access) goes through the summary file: `render()` in `src/hud.js` writes `~/.claude/system32-hud/state/<session>.summary.json`, and the `Summary` type in `register.tsx` reads it.
 - New plugin atoms need an entry in `PluginState` in `types/index.d.ts`.
 - Update the README's pane table.
 

@@ -1,6 +1,6 @@
 {
-  "name": "session-hud",
-  "displayName": "Claude HUD",
+  "name": "system32-hud",
+  "displayName": "System32 HUD",
   "version": "0.1.0",
   "description": "A system24-inspired HUD: status line, session pane, working line and job-complete line.",
   "author": {

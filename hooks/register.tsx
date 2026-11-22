@@ -1,4 +1,4 @@
-// session-hud mod: session pane (docked right), working line under the spinner, job-complete line, toasts.
+// system32-hud mod: session pane (docked right), working line under the spinner, job-complete line, toasts.
 // Same flat system24 look as the status line: lowercase, one accent, thin glyphs, no boxes.
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
@@ -6,12 +6,12 @@ import type { Register } from 'claude-code'
 import type { AgentRow, Job, LogEntry, Phase } from '../types'
 
 const PANE = 'hud'
-const log = atom({ plugin: 'session-hud', key: 'log' } as const, [] as LogEntry[], { shape: 'log-1' })
-const agents = atom({ plugin: 'session-hud', key: 'agents' } as const, [] as AgentRow[], { shape: 'agents-1' })
-const jobs = atom({ plugin: 'session-hud', key: 'jobs' } as const, [] as Job[], { shape: 'jobs-1' })
-const skills = atom({ plugin: 'session-hud', key: 'skills' } as const, [] as string[], { shape: 'skills-1' }) // invoked this session, newest last
-const turnStart = atom({ plugin: 'session-hud', key: 'turnStart' } as const, 0)
-const tick = atom({ plugin: 'session-hud', key: 'tick' } as const, 0) // bumped by session.measure so the pane redraws on usage changes
+const log = atom({ plugin: 'system32-hud', key: 'log' } as const, [] as LogEntry[], { shape: 'log-1' })
+const agents = atom({ plugin: 'system32-hud', key: 'agents' } as const, [] as AgentRow[], { shape: 'agents-1' })
+const jobs = atom({ plugin: 'system32-hud', key: 'jobs' } as const, [] as Job[], { shape: 'jobs-1' })
+const skills = atom({ plugin: 'system32-hud', key: 'skills' } as const, [] as string[], { shape: 'skills-1' }) // invoked this session, newest last
+const turnStart = atom({ plugin: 'system32-hud', key: 'turnStart' } as const, 0)
+const tick = atom({ plugin: 'system32-hud', key: 'tick' } as const, 0) // bumped by session.measure so the pane redraws on usage changes
 
 type Summary = { theme: Record<string, string>; avail: number; pinned?: string[]; today: number; wk: number; todos: [string, string][]; week: { m: string; io: number; usd: number | null }[] }
 const C0 = { acc: '#9cb4d8', ok: '#87af87', warn: '#d7af5f', bad: '#d75f5f', dim: '#767676', fg: '#d0d0d0' }
@@ -50,7 +50,7 @@ let themeAt = 0
 async function applyTheme($: { session: { id(): Promise<string> }; env: { get(n: string): Promise<string | undefined> }; fs: { read(p: string): Promise<string> } }) {
   if (Date.now() - themeAt < 5000) return
   themeAt = Date.now()
-  try { const sid = await $.session.id(), home = await $.env.get('HOME'); Object.assign(C, C0, parseSummary(await $.fs.read(`${home}/.claude/session-hud/state/${sid.replace(/[^\w-]/g, '')}.summary.json`))?.theme) } catch { /* keep the current colors */ }
+  try { const sid = await $.session.id(), home = await $.env.get('HOME'); Object.assign(C, C0, parseSummary(await $.fs.read(`${home}/.claude/system32-hud/state/${sid.replace(/[^\w-]/g, '')}.summary.json`))?.theme) } catch { /* keep the current colors */ }
 }
 
 function labelOf(tool: string, a: Record<string, unknown>): string {
@@ -66,11 +66,16 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'hud', description: 'Open the session HUD pane' })
-    void $.ui.open({ id: PANE, title: 'session' })
+    void $.ui.open({ id: PANE, title: 'session' }).catch(() => {}) // unasked: seats from 144 columns, else waits
     $.clock.every(5000, () => { void update($, tick, n => n + 1) }) // the pane also shows data the status line writes to disk, so redraw with it
     return next(e)
   })
-  on('command.run', { command: 'hud' }, async $ => { await $.ui.open({ id: PANE, title: 'session' }); return { text: 'HUD pane opened.' } })
+  on('command.run', { command: 'hud' }, async $ => { // asked by the person: seats at any width, so say plainly if it still does not
+    try {
+      const r = await $.ui.open({ id: PANE, title: 'session', focus: true })
+      return { text: r.isPlaced ? 'hud pane open' : `hud pane not placed: ${r.reason}` }
+    } catch (err) { return { text: `hud pane refused: ${err instanceof Error ? err.message : String(err)}` } }
+  })
 
   on('skill.prompt', async ($, e, next) => { await update($, skills, l => [...l.filter(x => x !== cl(e.skill)), cl(e.skill)].slice(-20)); return next(e) })
 
@@ -131,7 +136,7 @@ export const register: Register = on => {
     const sid = await $.session.id(), home = await $.env.get('HOME')
     const [model, u, l, ag, sk, now, turns, repo] = await Promise.all([$.session.model(), $.session.usage({ breakdown: 'summary' }), read($, log), read($, agents), read($, skills), $.clock.now(), $.session.turns(), $.session.repo().catch(() => null), read($, tick)])
     let sm: Summary | null = null
-    try { sm = parseSummary(await $.fs.read(`${home}/.claude/session-hud/state/${sid.replace(/[^\w-]/g, '')}.summary.json`)) } catch { sm = null }
+    try { sm = parseSummary(await $.fs.read(`${home}/.claude/system32-hud/state/${sid.replace(/[^\w-]/g, '')}.summary.json`)) } catch { sm = null }
     Object.assign(C, C0, sm?.theme); themeAt = Date.now()
     const W = Math.max(20, e.props.bodyColumns), rows = e.props.scroll?.bodyRows ?? e.viewport?.rows ?? 30
     const H = (s: string, extra = '') => <Text color={C.acc} bold wrap="truncate-end">{`▌ ${s}`}<Text color={C.dim} bold={false}>{extra}</Text></Text>

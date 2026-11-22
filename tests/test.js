@@ -25,9 +25,9 @@ t.test('scan dedupes repeated message ids and buckets by model', () => {
   const line = (id, out) => JSON.stringify({ type: 'assistant', timestamp: new Date().toISOString(), message: { id, model: 'claude-opus-5-5', usage: { input_tokens: 1, output_tokens: out, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } });
   fs.writeFileSync(path.join(dir, 's.jsonl'), [line('a', 5), line('a', 5), line('b', 7)].join('\n') + '\n');
   hh.scan();
-  const L = JSON.parse(fs.readFileSync(path.join(home, '.claude', 'session-hud', 'ledger.json')));
+  const L = JSON.parse(fs.readFileSync(path.join(home, '.claude', 'system32-hud', 'ledger.json')));
   const u = Object.values(Object.values(L.days)[0])[0]; assert.deepEqual(u.slice(0, 2), [2, 12]);
-  hh.scan(); assert.deepEqual(Object.values(Object.values(JSON.parse(fs.readFileSync(path.join(home, '.claude', 'session-hud', 'ledger.json'))).days)[0])[0].slice(0, 2), [2, 12]); // rescan is idempotent
+  hh.scan(); assert.deepEqual(Object.values(Object.values(JSON.parse(fs.readFileSync(path.join(home, '.claude', 'system32-hud', 'ledger.json'))).days)[0])[0].slice(0, 2), [2, 12]); // rescan is idempotent
 });
 t.test('provider label', () => {
   assert.equal(h.provider('claude-opus-5-5', { CLAUDE_CODE_USE_BEDROCK: '1' }), 'Bedrock');
@@ -39,7 +39,7 @@ t.test('provider label', () => {
 t.test('todos and tools rows from hook events', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-')); process.env.HOME = home;
   delete require.cache[require.resolve('../src/hud.js')];
-  const hh = require('../src/hud.js'), d = path.join(home, '.claude', 'session-hud', 'state'); fs.mkdirSync(d, { recursive: true });
+  const hh = require('../src/hud.js'), d = path.join(home, '.claude', 'system32-hud', 'state'); fs.mkdirSync(d, { recursive: true });
   const ev = o => JSON.stringify({ t: Date.now(), ...o });
   fs.writeFileSync(path.join(d, 'tt.jsonl'), [ev({ e: 'start' }), ev({ e: 'todos', list: [['completed', 'a'], ['in_progress', 'Fix auth bug'], ['pending', 'c']] }),
     ev({ e: 'tstart', id: '1', n: 'Read', a: 'x.ts' }), ev({ e: 'tend', id: '1' }), ev({ e: 'tstart', id: '2', n: 'Edit', a: 'auth.ts' })].join('\n') + '\n');
@@ -56,7 +56,7 @@ t.test('docked: wide terminal trims to one crucial line', () => {
 t.test('pinned skills show as always-on, not as invoked', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-')); process.env.HOME = home;
   fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-  fs.writeFileSync(path.join(home, '.claude', 'session-hud.json'), JSON.stringify({ skills: { pinned: ['ponytail'] } }));
+  fs.writeFileSync(path.join(home, '.claude', 'system32-hud.json'), JSON.stringify({ skills: { pinned: ['ponytail'] } }));
   delete require.cache[require.resolve('../src/hud.js')];
   const out = require('../src/hud.js').render({ session_id: 'pp' }, 105).join('\n');
   assert.ok(out.includes('○ ponytail') && out.includes('always on') && !out.includes('none invoked'));
@@ -75,14 +75,14 @@ t.test('detects always-on skills from CLAUDE.md', () => {
 const fresh = () => { const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-')); process.env.HOME = home; delete require.cache[require.resolve('../src/hud.js')]; return { home, hh: require('../src/hud.js') }; };
 const runHook = (home, payload, env = {}) => require('child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'src', 'hud.js'), 'hook'], { input: JSON.stringify(payload), env: { ...process.env, HOME: home, ...env } });
 t.test('hook: session ids cannot traverse; state is private; debug.jsonl is off by default', () => {
-  const { home } = fresh(), S = path.join(home, '.claude', 'session-hud');
+  const { home } = fresh(), S = path.join(home, '.claude', 'system32-hud');
   runHook(home, { session_id: '../../evil', hook_event_name: 'SessionStart', secret: 'PROMPT-TEXT' });
   runHook(home, { session_id: 'ok-1', hook_event_name: 'PreToolUse', tool_name: 'Skill', tool_input: { skill: 'x' } });
   assert.deepEqual(fs.readdirSync(path.join(S, 'state')).sort(), ['ok-1.jsonl', 'evil.jsonl'].sort());
   assert.ok(!fs.existsSync(path.join(home, '.claude', 'evil.jsonl')) && !fs.existsSync(path.join(S, 'debug.jsonl')));
   assert.equal(fs.statSync(path.join(S, 'state')).mode & 0o777, 0o700);
   assert.equal(fs.statSync(path.join(S, 'state', 'ok-1.jsonl')).mode & 0o777, 0o600);
-  runHook(home, { session_id: 'ok-1', hook_event_name: 'PreToolUse', tool_name: 'Skill', tool_input: { skill: 'y' } }, { SESSION_HUD_DEBUG: '1' });
+  runHook(home, { session_id: 'ok-1', hook_event_name: 'PreToolUse', tool_name: 'Skill', tool_input: { skill: 'y' } }, { SYSTEM32_HUD_DEBUG: '1' });
   assert.equal(fs.statSync(path.join(S, 'debug.jsonl')).mode & 0o777, 0o600);
 });
 t.test('toolArg: Bash commands are never recorded, URL userinfo/query dropped', () => {
@@ -92,7 +92,7 @@ t.test('toolArg: Bash commands are never recorded, URL userinfo/query dropped', 
   assert.ok(!hh.toolArg({ file_path: '/a/\x1b]0;x\x07b.ts' }).includes('\x1b'));
 });
 t.test('control characters from untrusted data never reach the output', () => {
-  const { home, hh } = fresh(), d = path.join(home, '.claude', 'session-hud', 'state'); fs.mkdirSync(d, { recursive: true });
+  const { home, hh } = fresh(), d = path.join(home, '.claude', 'system32-hud', 'state'); fs.mkdirSync(d, { recursive: true });
   const ev = o => JSON.stringify({ t: Date.now(), ...o }), bad = '\x1b]0;PWNED\x07\x1b[2J\x9b31mX';
   fs.writeFileSync(path.join(d, 'cc.jsonl'), [ev({ e: 'start' }), ev({ e: 'skill', name: 'sk' + bad }), ev({ e: 'todos', list: [['in_progress', 'todo' + bad]] }), ev({ e: 'tstart', id: '1', n: 'T' + bad, a: 'a' + bad }), ev({ e: 'call', id: 'c', desc: 'd' + bad, type: 'ty' + bad }), 'null', '[1]'].join('\n') + '\n');
   const out = hh.render({ session_id: 'cc', model: { id: 'm' + bad }, workspace: { project_dir: '/p' + bad, current_dir: '/p' + bad } }, 105).join('\n');
@@ -128,11 +128,11 @@ t.test('ledger walk ignores symlinked transcripts and dirs', () => {
   const line = JSON.stringify({ type: 'assistant', timestamp: new Date().toISOString(), message: { id: 'z', model: 'claude-opus-5-5', usage: { input_tokens: 9, output_tokens: 9 } } });
   fs.writeFileSync(path.join(out, 'o.jsonl'), line + '\n');
   fs.symlinkSync(out, path.join(P, 'loop')); fs.symlinkSync(P, path.join(P, 'p', 'up')); fs.symlinkSync(path.join(out, 'o.jsonl'), path.join(P, 'p', 'l.jsonl'));
-  hh.scan(); const L = JSON.parse(fs.readFileSync(path.join(home, '.claude', 'session-hud', 'ledger.json')));
+  hh.scan(); const L = JSON.parse(fs.readFileSync(path.join(home, '.claude', 'system32-hud', 'ledger.json')));
   assert.deepEqual(L.days, {}); assert.deepEqual(L.files, {});
 });
 t.test('report scrubs cwd, transcript path and secrets', () => {
-  const { home, hh } = fresh(), D = path.join(home, '.claude', 'session-hud'); fs.mkdirSync(D, { recursive: true });
+  const { home, hh } = fresh(), D = path.join(home, '.claude', 'system32-hud'); fs.mkdirSync(D, { recursive: true });
   fs.writeFileSync(path.join(D, 'last-input.json'), JSON.stringify({ session_id: 'x', cwd: '/srv/acme-secret-proj', transcript_path: '/srv/t/-srv-acme-secret-proj/abc.jsonl', workspace: { project_dir: '/srv/acme-secret-proj', current_dir: '/srv/acme-secret-proj' }, note: 'sk-ant-abcdefghijklmnop' }));
   const log = console.log; let out = ''; console.log = s => { out += s; };
   try { hh.report(); } finally { console.log = log; }
@@ -149,26 +149,26 @@ t.test('detectPinned reads only the first 64 KB', () => {
   const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'hud-p-'));
   const input = JSON.stringify({ session_id: 'pp1', model: { id: 'claude-opus-5-5' }, cwd: '/tmp' });
 
-  t.test('SESSION_HUD_DISABLE: only truthy values disable; management commands still work', () => {
+  t.test('SYSTEM32_HUD_DISABLE: only truthy values disable; management commands still work', () => {
     const h = tmp();
-    assert.ok(run(h, [], { input, env: { SESSION_HUD_DISABLE: '0' } }).stdout.includes('opus-5.5'));
-    assert.equal(run(h, [], { input, env: { SESSION_HUD_DISABLE: '1' } }).stdout.trim(), '');
-    assert.ok(run(h, ['config', 'preview', 'mode=compact'], { env: { SESSION_HUD_DISABLE: '1' } }).stdout.includes('preview only'));
+    assert.ok(run(h, [], { input, env: { SYSTEM32_HUD_DISABLE: '0' } }).stdout.includes('opus-5.5'));
+    assert.equal(run(h, [], { input, env: { SYSTEM32_HUD_DISABLE: '1' } }).stdout.trim(), '');
+    assert.ok(run(h, ['config', 'preview', 'mode=compact'], { env: { SYSTEM32_HUD_DISABLE: '1' } }).stdout.includes('preview only'));
   });
   t.test('git only runs when the project section is shown', () => {
     const h = tmp(); run(h, [], { input });
-    assert.ok(!fs.existsSync(path.join(h, '.claude', 'session-hud', 'git.json')));
-    fs.writeFileSync(path.join(h, '.claude', 'session-hud.json'), JSON.stringify({ sections: ['model', 'project'] })); run(h, [], { input });
-    assert.ok(fs.existsSync(path.join(h, '.claude', 'session-hud', 'git.json')));
+    assert.ok(!fs.existsSync(path.join(h, '.claude', 'system32-hud', 'git.json')));
+    fs.writeFileSync(path.join(h, '.claude', 'system32-hud.json'), JSON.stringify({ sections: ['model', 'project'] })); run(h, [], { input });
+    assert.ok(fs.existsSync(path.join(h, '.claude', 'system32-hud', 'git.json')));
   });
   t.test('replay is read-only: no summary, no ledger claim, no scan', () => {
-    const h = tmp(); const d = path.join(h, '.claude', 'session-hud'); fs.mkdirSync(d, { recursive: true });
+    const h = tmp(); const d = path.join(h, '.claude', 'system32-hud'); fs.mkdirSync(d, { recursive: true });
     fs.writeFileSync(path.join(d, 'last-input.json'), input);
     assert.ok(run(h, ['replay']).stdout.includes('opus-5.5'));
     assert.deepEqual(fs.readdirSync(d), ['last-input.json']);
   });
   t.test('state trim is atomic and keeps the last start event', () => {
-    const h = tmp(), st = path.join(h, '.claude', 'session-hud', 'state'); fs.mkdirSync(st, { recursive: true });
+    const h = tmp(), st = path.join(h, '.claude', 'system32-hud', 'state'); fs.mkdirSync(st, { recursive: true });
     const f = path.join(st, 'big.jsonl'), line = i => JSON.stringify({ t: i, e: 'tend', id: 'x'.repeat(100) });
     fs.writeFileSync(f, JSON.stringify({ t: 1, e: 'start' }) + '\n' + Array.from({ length: 25000 }, (_, i) => line(i)).join('\n') + '\n');
     run(h, ['hook'], { input: JSON.stringify({ session_id: 'big', hook_event_name: 'PostModelSwitch', to_model: 'claude-opus-5-5' }) });
@@ -195,17 +195,17 @@ t.test('detectPinned reads only the first 64 KB', () => {
   });
   t.test('themes: colors reach the status line and the summary file; matrix paints full-width rows', () => {
     const j = JSON.stringify({ session_id: 'th1', model: { id: 'claude-opus-5-5' }, context_window: { context_window_size: 2e5, used_percentage: 41 } });
-    const h1 = tmp(); fs.mkdirSync(path.join(h1, '.claude'), { recursive: true }); fs.writeFileSync(path.join(h1, '.claude', 'session-hud.json'), JSON.stringify({ theme: 'monokai' }));
+    const h1 = tmp(); fs.mkdirSync(path.join(h1, '.claude'), { recursive: true }); fs.writeFileSync(path.join(h1, '.claude', 'system32-hud.json'), JSON.stringify({ theme: 'monokai' }));
     const env = { NO_COLOR: '', COLUMNS: '50' }, out = run(h1, [], { input: j, env }).stdout;
     assert.ok(out.includes('\x1b[38;2;102;217;239m') && !out.includes('\x1b[48;'), 'monokai accent, no bg');
-    const sum = JSON.parse(fs.readFileSync(path.join(h1, '.claude', 'session-hud', 'state', 'th1.summary.json'), 'utf8')); assert.equal(sum.theme.acc, '#66d9ef');
-    fs.writeFileSync(path.join(h1, '.claude', 'session-hud.json'), JSON.stringify({ theme: 'matrix' }));
+    const sum = JSON.parse(fs.readFileSync(path.join(h1, '.claude', 'system32-hud', 'state', 'th1.summary.json'), 'utf8')); assert.equal(sum.theme.acc, '#66d9ef');
+    fs.writeFileSync(path.join(h1, '.claude', 'system32-hud.json'), JSON.stringify({ theme: 'matrix' }));
     const rows = run(h1, [], { input: j, env }).stdout.trimEnd().split('\n');
     for (const r of rows) assert.ok(r.startsWith('\x1b[48;2;0;0;0m') && h.vis(r) === 50 && r.endsWith('\x1b[0m'), 'row painted and padded to 50');
   });
   t.test('config themes lists presets; theme= and theme.key= edit the config', () => {
     const h2 = tmp(), list = run(h2, ['config', 'themes']).stdout; for (const n of ['monokai', 'abyss', 'solarized', 'matrix', 'default', 'dracula']) assert.ok(list.includes(n), n);
     run(h2, ['config', 'set', 'theme=monokai']); run(h2, ['config', 'set', 'theme.acc=#ff00ff']);
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(h2, '.claude', 'session-hud.json'), 'utf8')).theme, { name: 'monokai', acc: '#ff00ff' });
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(h2, '.claude', 'system32-hud.json'), 'utf8')).theme, { name: 'monokai', acc: '#ff00ff' });
   });
 }

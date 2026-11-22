@@ -1,6 +1,6 @@
 # Architecture
 
-session-hud has two halves that never call each other: a Node script (`src/hud.js`) that renders the status line and records hook events, and a mod (`hooks/register.tsx`) that draws the pane, the working line and the job-complete line. They share data through files under `~/.claude/session-hud/`.
+system32-hud has two halves that never call each other: a Node script (`src/hud.js`) that renders the status line and records hook events, and a mod (`hooks/register.tsx`) that draws the pane, the working line and the job-complete line. They share data through files under `~/.claude/system32-hud/`.
 
 ![Architecture](img/architecture.svg)
 
@@ -17,7 +17,7 @@ session-hud has two halves that never call each other: a Node script (`src/hud.j
 
 ## Files on disk
 
-All under `~/.claude/session-hud/` (dir 0700, files 0600) unless noted.
+All under `~/.claude/system32-hud/` (dir 0700, files 0600) unless noted.
 
 | File | Writer | Reader |
 |---|---|---|
@@ -29,8 +29,8 @@ All under `~/.claude/session-hud/` (dir 0700, files 0600) unless noted.
 | `prev-statusline.json` | `install` | `uninstall` |
 | `hud.js` | `install` (not with `--link`) | the statusLine command |
 | `report.md` | `report` | you |
-| `debug.jsonl` | `hud.js hook`, only with `SESSION_HUD_DEBUG=1` | you |
-| `~/.claude/session-hud.json`, `.bak` | you, `config set` | render (config), `config` |
+| `debug.jsonl` | `hud.js hook`, only with `SYSTEM32_HUD_DEBUG=1` | you |
+| `~/.claude/system32-hud.json`, `.bak` | you, `config set` | render (config), `config` |
 | `<settings>`, `<settings>.hud-bak` | `install`, `uninstall` | Claude Code |
 
 Reads outside this directory: `~/.claude/projects/**/*.jsonl` (transcripts), `~/.claude/skills`, `<cwd>/.claude/skills`, `~/.claude/plugins/installed_plugins.json` and each plugin's `skills/` (skills-available count), and up to 64 KB of `~/.claude/CLAUDE.md`, `<cwd>/CLAUDE.md`, `<cwd>/.claude/CLAUDE.md` (pinned-skill detection).

@@ -2,7 +2,7 @@
 
 A heads-up display for Claude Code, drawn in the status line: context, rate limits, cost, skills, sub-agents, todos and tool activity, always visible below your prompt. A mod adds a docked side pane, a working line and a job-complete line.
 
-The status line is one zero-dependency Node file. No network, no telemetry. (The plugin id, paths and config file are still named `session-hud`.)
+The status line is one zero-dependency Node file. No network, no telemetry. (The plugin id, paths and config file are still named `system32-hud`.)
 
 ```
 ▌ opus-5.5 · high
@@ -20,10 +20,12 @@ tools  ◐ Edit: auth.ts | ✓ Read ×3 | ✓ Grep ×2
 
 ```
 claude plugin marketplace add cmxau/system32-hud
-claude plugin install session-hud@<marketplace>
+claude plugin install system32-hud@system32-hud
 ```
 
-Then, inside Claude Code, say "set up session-hud" (runs the `setup` skill), or run `node <plugin>/src/hud.js install [--user]`. Plugins can't ship a `statusLine`, so `install` edits your settings with a backup; `uninstall` restores the previous one. Details, snapshot behaviour and local testing: [docs/installation.md](docs/installation.md).
+One step inside Claude Code: `/plugin install system32-hud --marketplace cmxau/system32-hud`.
+
+Then, inside Claude Code, say "set up system32-hud" (runs the `setup` skill), or run `node <plugin>/src/hud.js install [--user]`. Plugins can't ship a `statusLine`, so `install` edits your settings with a backup; `uninstall` restores the previous one. Pick a look with `node src/hud.js config set theme=nord` (see [themes](docs/configuration.md#themes)). Details, snapshot behaviour and local testing: [docs/installation.md](docs/installation.md).
 
 ## What you get
 
@@ -37,7 +39,7 @@ All rows, pane blocks and layout modes: [docs/features.md](docs/features.md).
 
 ## Configure
 
-Settings live in `~/.claude/session-hud.json`; every key is optional.
+Settings live in `~/.claude/system32-hud.json`; every key is optional.
 
 ```json
 { "theme": "monokai", "mode": "auto", "dockCols": 110, "sections": ["model", "ctx", "limits", "cost", "week", "skills", "agents", "todos", "tools"],
@@ -46,7 +48,7 @@ Settings live in `~/.claude/session-hud.json`; every key is optional.
 
 ```
 node src/hud.js config preview mode=compact   # render the last real input with the change, save nothing
-node src/hud.js config set bar.width=8        # preview, back up to session-hud.json.bak, save
+node src/hud.js config set bar.width=8        # preview, back up to system32-hud.json.bak, save
 node src/hud.js config undo                   # restore the backup (last change only)
 node src/hud.js replay                        # re-render the last status-line input
 node src/hud.js report                        # write a scrubbed bug report locally
@@ -54,11 +56,11 @@ node src/hud.js report                        # write a scrubbed bug report loca
 
 **Themes:** `default`, `monokai`, `abyss`, `solarized`, `matrix` (green on black), `dracula`, `nord`, `gruvbox`, `tokyo-night`, `synthwave`, `rose-pine`. List them with `node src/hud.js config themes`, switch with `config set theme=nord`.
 
-`SESSION_HUD_DISABLE=1` turns the HUD off for a session. Every key, default and env var: [docs/configuration.md](docs/configuration.md).
+`SYSTEM32_HUD_DISABLE=1` turns the HUD off for a session. Every key, default and env var: [docs/configuration.md](docs/configuration.md).
 
 ## Privacy and security
 
-No network calls. It reads the status-line JSON, hook payloads, your transcripts (for cost) and `CLAUDE.md` (for pinned skills), and writes only under `~/.claude/session-hud/` (private, 0700/0600), its config file and, on install, your settings file. Bash commands are never recorded; the optional raw debug log is off unless `SESSION_HUD_DEBUG=1`. Cost figures are estimates at list price, not a bill. Threat model and hardening: [docs/security.md](docs/security.md).
+No network calls. It reads the status-line JSON, hook payloads, your transcripts (for cost) and `CLAUDE.md` (for pinned skills), and writes only under `~/.claude/system32-hud/` (private, 0700/0600), its config file and, on install, your settings file. Bash commands are never recorded; the optional raw debug log is off unless `SYSTEM32_HUD_DEBUG=1`. Cost figures are estimates at list price, not a bill. Threat model and hardening: [docs/security.md](docs/security.md).
 
 ## Docs
 

@@ -5,7 +5,7 @@ export type Job = { ms: number; edits: number; cmds: number; errors: number; abo
 
 declare module 'claude-code' {
   interface PluginState {
-    'session-hud': {
+    'system32-hud': {
       log: Shaped<LogEntry[]>
       agents: Shaped<AgentRow[]>
       skills: Shaped<string[]>

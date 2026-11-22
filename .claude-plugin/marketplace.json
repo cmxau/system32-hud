@@ -1,0 +1,12 @@
+{
+  "name": "system32-hud",
+  "owner": { "name": "cmxau" },
+  "description": "System32 HUD: a system24-inspired status line, side pane and working line for Claude Code.",
+  "plugins": [
+    {
+      "name": "system32-hud",
+      "source": "./",
+      "description": "Status line, session pane, working line and job-complete line: model, context, limits, cost, weekly usage, skills and sub-agents."
+    }
+  ]
+}

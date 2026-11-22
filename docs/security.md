@@ -2,7 +2,7 @@
 
 ## Threat model
 
-session-hud runs as you, on your machine, inside your Claude Code session. It has no network code. The assets are what the files it reads and writes could leak, and your terminal and settings files, which it must not corrupt.
+system32-hud runs as you, on your machine, inside your Claude Code session. It has no network code. The assets are what the files it reads and writes could leak, and your terminal and settings files, which it must not corrupt.
 
 Untrusted input, in order of concern:
 
@@ -30,14 +30,14 @@ Only these paths; nothing is sent anywhere.
 
 | Path | Mode | Content |
 |---|---|---|
-| `~/.claude/session-hud/` | dir 0700 | state root |
+| `~/.claude/system32-hud/` | dir 0700 | state root |
 | `state/<sid>.jsonl` | 0600 | one small event per hook, see below |
 | `state/<sid>.summary.json` | 0600 | week totals, todos, pinned skills for the pane |
 | `ledger.json` | 0600 | tokens per day and model, plus per-transcript byte offsets and paths |
 | `last-input.json` | 0600 | the last raw status-line JSON (includes `cwd`, `transcript_path`, `session_id`, model, cost) |
 | `git.json`, `skills-count.json`, `prev-statusline.json`, `report.md`, `hud.js` | 0600 | caches, saved statusLine, report, installed copy |
-| `debug.jsonl` | 0600 | only with `SESSION_HUD_DEBUG=1`: raw payloads of `skill`, subagent and model events. Can contain prompts, file contents and tool inputs. Appends stop past about 200 KB |
-| `~/.claude/session-hud.json`, `.bak` | 0600 for a new file; an existing file keeps its mode | config |
+| `debug.jsonl` | 0600 | only with `SYSTEM32_HUD_DEBUG=1`: raw payloads of `skill`, subagent and model events. Can contain prompts, file contents and tool inputs. Appends stop past about 200 KB |
+| `~/.claude/system32-hud.json`, `.bak` | 0600 for a new file; an existing file keeps its mode | config |
 | settings file, `.hud-bak` | existing mode (new settings file 0644) | `install` and `uninstall` only |
 
 Event lines hold: event type, timestamp, session-scoped ids, skill names (100 chars), todo text (80 chars, 100 items), tool names (60 chars), a short tool argument (28 chars), agent descriptions (200 chars), types and model ids (60 chars). Todo text and agent descriptions can themselves contain sensitive wording; treat the state directory as private.

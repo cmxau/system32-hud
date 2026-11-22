@@ -4,12 +4,12 @@ First look: `node src/hud.js replay` re-renders the last status-line input with 
 
 ## Blank HUD
 
-1. **Not installed.** Plugins cannot ship a statusLine. Run `node <plugin>/src/hud.js install [--user]` or say "set up session-hud", then restart Claude Code or send a message. Check that the settings file has a `statusLine` whose command runs `hud.js`.
+1. **Not installed.** Plugins cannot ship a statusLine. Run `node <plugin>/src/hud.js install [--user]` or say "set up system32-hud", then restart Claude Code or send a message. Check that the settings file has a `statusLine` whose command runs `hud.js`.
 2. **Wrong settings file.** Without `--user`, `install` edits `./.claude/settings.local.json` in the directory you ran it from. It applies to that project only.
-3. **Disabled.** `SESSION_HUD_DISABLE` set to `1`, `true`, `yes` or `on` (any case) makes the render print an empty line. `0` or empty does not.
+3. **Disabled.** `SYSTEM32_HUD_DISABLE` set to `1`, `true`, `yes` or `on` (any case) makes the render print an empty line. `0` or empty does not.
 4. **Node missing or too old.** The command is `node "<path>"`; `node` must be on the PATH Claude Code uses.
-5. **A leftover copy.** `install` copies `hud.js` to `~/.claude/session-hud/hud.js`, and the statusLine runs that copy. If you moved or deleted it, or you installed with `--link` and moved the checkout, re-run `install`.
-6. **A one-line dim message** such as `session-hud: bad input` means the status line got input that was not a JSON object.
+5. **A leftover copy.** `install` copies `hud.js` to `~/.claude/system32-hud/hud.js`, and the statusLine runs that copy. If you moved or deleted it, or you installed with `--link` and moved the checkout, re-run `install`.
+6. **A one-line dim message** such as `system32-hud: bad input` means the status line got input that was not a JSON object.
 7. **Compare against the sample.** Using a scratch home so nothing real is touched:
    ```
    export HOME=$(mktemp -d); now=$(date +%s)
@@ -41,7 +41,18 @@ The 5h and 7d rows come only from `rate_limits` in the status-line JSON, which C
 | agent descriptions missing or swapped | `SubagentStart` has no description, so it is matched to the oldest queued call of the same type |
 | nothing after a session was resumed | the fold restarts at the last `SessionStart` event in that session's log |
 
-To reset: delete `~/.claude/session-hud/ledger.json` (rebuilt by the next scan) or the whole directory (state, caches and the installed `hud.js`, so re-run `install` afterwards).
+To reset: delete `~/.claude/system32-hud/ledger.json` (rebuilt by the next scan) or the whole directory (state, caches and the installed `hud.js`, so re-run `install` afterwards).
+
+## `/hud` shows no pane
+
+`/hud` prints what Claude Code answered when asked to open the pane:
+
+- `hud pane open`: it is placed. If you still see nothing, widen the terminal; the dock needs fullscreen rendering at 110+ columns, otherwise it sits inline above the prompt.
+- `hud pane not placed: <reason>`: Claude Code accepted the pane but has no room or surface for it; the reason is its own.
+- `hud pane refused: <message>`: another plugin already holds a pane with this id, or the open was rejected; the message names why.
+- No answer at all, or "unknown command": the plugin's mod is not loaded. Check `claude plugin list`, restart Claude Code, or start with `claude --plugin-dir <checkout>`.
+
+The automatic open at session start only seats from 144 columns; `/hud` is a request from you and seats at any width.
 
 ## Pane not docked, or the bottom is too short
 
@@ -55,20 +66,20 @@ To reset: delete `~/.claude/session-hud/ledger.json` (rebuilt by the next scan) 
 ## Settings or config refusal
 
 ```
-session-hud: /path/settings.local.json is not valid JSON (...); fix or remove it first, nothing was changed
+system32-hud: /path/settings.local.json is not valid JSON (...); fix or remove it first, nothing was changed
 ```
 
 `install`, `uninstall` and `config preview|set` exit 1 and change nothing when the existing file does not parse or is not a JSON object (an array, for example). Claude Code's own settings files are JSON, not JSON with comments; remove comments and trailing commas, or move the file aside and run `install` to create a new one.
 
 ```
-session-hud: /path/.claude/settings.local.json is a symlink; refusing to write through it
+system32-hud: /path/.claude/settings.local.json is a symlink; refusing to write through it
 ```
 
 Raised by `install` and `uninstall` for a project-local settings file that is a symlink. Replace the link with a real file, or use `--user`. With `--user`, a symlinked `settings.json` is allowed: the real target is updated in place.
 
 Other `config` exits: `refusing key "..."` (empty segment, `__proto__`, `constructor`, `prototype`) and `expected key=value`.
 
-Undo trail: the settings file has `.hud-bak` beside it (the copy from just before the last `install`); `config set` leaves `session-hud.json.bak`; `uninstall` restores the statusLine saved in `~/.claude/session-hud/prev-statusline.json` if it was saved for the same file.
+Undo trail: the settings file has `.hud-bak` beside it (the copy from just before the last `install`); `config set` leaves `system32-hud.json.bak`; `uninstall` restores the statusLine saved in `~/.claude/system32-hud/prev-statusline.json` if it was saved for the same file.
 
 ## Using replay and report
 
@@ -76,4 +87,4 @@ Undo trail: the settings file has `.hud-bak` beside it (the copy from just befor
 - `config preview k=v` shows a change on that same input, saving nothing.
 - `replay`, `report` and `config preview` write no summary, ledger claim, scan or caches, so they are safe to run any time (`report` writes `report.md`).
 - `report` prints and saves a scrubbed report: node version, config, last input, render. Read it before pasting it into an issue; todo text, file names and skill names are not scrubbed. Details: [security](security.md#report).
-- To capture hook payloads while chasing a missing event, run Claude Code with `SESSION_HUD_DEBUG=1` and read `~/.claude/session-hud/debug.jsonl`. It holds raw prompts and tool inputs: do not share it, and delete it afterwards.
+- To capture hook payloads while chasing a missing event, run Claude Code with `SYSTEM32_HUD_DEBUG=1` and read `~/.claude/system32-hud/debug.jsonl`. It holds raw prompts and tool inputs: do not share it, and delete it afterwards.

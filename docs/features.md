@@ -36,7 +36,7 @@ Loaded with the plugin (`hooks/register.tsx`). The mod opens the pane at session
 | files | most-edited files |
 | activity | call count, failures and the latest tool calls; last, and hidden when the terminal is short |
 
-Live numbers come from `$.session.usage()`, so they match the status line. Week, skills-available, pinned skills and todos come from `~/.claude/session-hud/state/<session>.summary.json`, which the status line rewrites on each refresh (the pane has no transcript or hook access). The pane redraws every 5s.
+Live numbers come from `$.session.usage()`, so they match the status line. Week, skills-available, pinned skills and todos come from `~/.claude/system32-hud/state/<session>.summary.json`, which the status line rewrites on each refresh (the pane has no transcript or hook access). The pane redraws every 5s.
 
 Also: a **working line** under the spinner (a sliding bar plus `editing · 4 ops · 42s`), a **job-complete line** replacing "Baked for 3s" (`✓ 2m14s · 6 edits · 3 cmds · 0 errors`), and **toasts** for turns over 2 minutes and context at 80% or more.
 

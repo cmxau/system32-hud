@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// session-hud: one file, zero deps. Modes: (default) render status line | hook | scan | install | uninstall | config | replay | report
-// SESSION_HUD_DISABLE=1 turns the status line and its hooks off for that process; install/config/replay/report still work.
+// system32-hud: one file, zero deps. Modes: (default) render status line | hook | scan | install | uninstall | config | replay | report
+// SYSTEM32_HUD_DISABLE=1 turns the status line and its hooks off for that process; install/config/replay/report still work.
 const fs = require('fs'), os = require('os'), path = require('path'), cp = require('child_process');
 
 const HOME = os.homedir();
-const DIR = path.join(HOME, '.claude', 'session-hud');         // state lives here, not in the plugin dir (survives updates, same path for hooks + renderer)
+const DIR = path.join(HOME, '.claude', 'system32-hud');         // state lives here, not in the plugin dir (survives updates, same path for hooks + renderer)
 const STATE = path.join(DIR, 'state'), LEDGER = path.join(DIR, 'ledger.json');
-const CFG = path.join(HOME, '.claude', 'session-hud.json');
+const CFG = path.join(HOME, '.claude', 'system32-hud.json');
 const PROJECTS = path.join(HOME, '.claude', 'projects');
 const rd = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 // state is private: dirs 0700, files 0600, temp file created exclusively (never follows a planted symlink)
@@ -15,7 +15,7 @@ const wrText = (f, text, mode = 0o600) => { priv(path.dirname(f)); const t = f +
 const wr = (f, o) => wrText(f, JSON.stringify(o));
 // write a file the user owns (settings / config) atomically: through a symlink to its real target, keeping its mode
 const wrUser = (f, text, dflt) => { let real = f, mode = dflt; try { real = fs.realpathSync(f); mode = fs.statSync(real).mode & 0o777; } catch {} wrText(real, text, mode); };
-const OFF = /^(1|true|yes|on)$/i.test(process.env.SESSION_HUD_DISABLE || ''); // "0"/"" mean enabled
+const OFF = /^(1|true|yes|on)$/i.test(process.env.SYSTEM32_HUD_DISABLE || ''); // "0"/"" mean enabled
 let DRY = false; // replay / report / config preview: read-only, no summary write, no scan, no git cache
 // strict JSON object reader for files we may REWRITE (settings): missing -> {}, unparseable/non-object -> throws, so we never clobber it
 const rdStrict = f => { let t; try { t = fs.readFileSync(f, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; }
@@ -145,8 +145,8 @@ function hook() {
         const ls = fs.readFileSync(sf, 'utf8').split('\n').filter(Boolean), st = ls.findLastIndex(l => l.includes('"e":"start"')), keep = ls.slice(-1000);
         if (st >= 0 && st < ls.length - 1000) keep.unshift(ls[st]); wrText(sf, keep.join('\n') + '\n'); } } catch {}
       fs.appendFileSync(sf, JSON.stringify({ t, ...e }) + '\n', { mode: 0o600 });
-      // spike aid, OPT-IN only (SESSION_HUD_DEBUG=1): raw payloads can hold prompts, file contents and tool inputs. Capped at 200 KB, 0600.
-      if (process.env.SESSION_HUD_DEBUG === '1' && ['skill', 'astart', 'astop', 'model'].includes(e.e)) { const f = path.join(DIR, 'debug.jsonl');
+      // spike aid, OPT-IN only (SYSTEM32_HUD_DEBUG=1): raw payloads can hold prompts, file contents and tool inputs. Capped at 200 KB, 0600.
+      if (process.env.SYSTEM32_HUD_DEBUG === '1' && ['skill', 'astart', 'astop', 'model'].includes(e.e)) { const f = path.join(DIR, 'debug.jsonl');
         if (!fs.existsSync(f) || fs.statSync(f).size < 2e5) fs.appendFileSync(f, raw.replace(/\n/g, ' ') + '\n', { mode: 0o600 }); }
     } catch { /* hooks must never fail loudly */ }
   });
@@ -354,7 +354,7 @@ const isLink = p => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { r
 const unlink = p => { if (isLink(p)) fs.unlinkSync(p); }; // replace a symlink, never write through it
 // shell-safe command: keep the familiar "..." form when the path has no shell-special chars, else POSIX single quotes
 const shq = p => process.platform === 'win32' || !/["$`\\'!]/.test(p) ? `"${p}"` : `'${p.replace(/'/g, `'\\''`)}'`;
-const fail = e => { console.error('session-hud: ' + e.message); process.exitCode = 1; };
+const fail = e => { console.error('system32-hud: ' + e.message); process.exitCode = 1; };
 function install(args) {
   const f = settingsFile(args), prev = path.join(DIR, 'prev-statusline.json');
   let s; try { s = rdStrict(f); } catch (e) { return fail(e); } // a malformed settings file is refused, never replaced with {}
@@ -362,17 +362,17 @@ function install(args) {
   let target = __filename;
   if (!args.includes('--link')) { target = path.join(DIR, 'hud.js'); priv(DIR); unlink(target); fs.copyFileSync(__filename, target); }
   if (fs.existsSync(f)) { unlink(f + '.hud-bak'); fs.copyFileSync(f, f + '.hud-bak'); }
-  if (s.statusLine && !/session-hud/.test(JSON.stringify(s.statusLine)) && !args.includes('--link')) wr(prev, { file: f, statusLine: s.statusLine });
+  if (s.statusLine && !/system32-hud/.test(JSON.stringify(s.statusLine)) && !args.includes('--link')) wr(prev, { file: f, statusLine: s.statusLine });
   s.statusLine = { type: 'command', command: `node ${shq(target)}`, refreshInterval: 5 };
   fs.mkdirSync(path.dirname(f), { recursive: true }); wrUser(f, JSON.stringify(s, null, 2) + '\n', 0o644);
-  console.log(`session-hud statusLine -> ${f}` + (fs.existsSync(f + ".hud-bak") ? `\nbackup: ${f}.hud-bak` : ""));
+  console.log(`system32-hud statusLine -> ${f}` + (fs.existsSync(f + ".hud-bak") ? `\nbackup: ${f}.hud-bak` : ""));
 }
 function uninstall(args) {
   const f = settingsFile(args), p = rd(path.join(DIR, 'prev-statusline.json'), null); let s; try { s = rdStrict(f); } catch (e) { return fail(e); }
   if (!fs.existsSync(f)) return console.log('nothing to remove: ' + f + ' does not exist');
   if (!args.includes('--user') && isLink(f)) return fail(new Error(f + ' is a symlink; refusing to write through it'));
   if (p && p.file === f && p.statusLine && typeof p.statusLine === 'object') s.statusLine = p.statusLine; else delete s.statusLine;
-  wrUser(f, JSON.stringify(s, null, 2) + '\n', 0o644); console.log('session-hud removed from ' + f);
+  wrUser(f, JSON.stringify(s, null, 2) + '\n', 0o644); console.log('system32-hud removed from ' + f);
 }
 
 // ---------- config tooling: preview / set / undo, replay the last real render, scrubbed report
@@ -402,7 +402,7 @@ function report() {
       .replace(/(\b(?:Bearer|Basic)\s+)[\w.~+/=-]{8,}/gi, '$1<secret>'); };
   if ('transcript_path' in j) j.transcript_path = '<transcript>';
   delete j.tool_input; delete j.tool_response; delete j.prompt; // never expected here, never included
-  const out = scrub(['# session-hud report', `node ${process.version} ${process.platform}`, 'config: ' + JSON.stringify(rd(CFG, {})),
+  const out = scrub(['# system32-hud report', `node ${process.version} ${process.platform}`, 'config: ' + JSON.stringify(rd(CFG, {})),
     'last input: ' + JSON.stringify(j), 'render:', ...replay().map(l => l.replace(ANSI, ''))].join('\n'));
   const f = path.join(DIR, 'report.md'); priv(DIR); unlink(f); fs.writeFileSync(f, out + '\n', { mode: 0o600 }); console.log(out + '\n\nwritten to ' + f + ' (scrubbed; read it before sharing anywhere; nothing is sent)');
 }
@@ -420,6 +420,6 @@ if (require.main === module) {
   else if (mode === 'uninstall') uninstall(args);
   else { let raw = ''; process.stdin.on('data', d => { if (raw.length < 1e6) raw += d; }).on('end', () => {
     try { const j = JSON.parse(raw || '{}'); if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('bad input'); try { wr(LAST, j); } catch {} console.log(render(j, +process.env.COLUMNS || 100).join('\n')); }
-    catch (e) { console.log(col('dim', 'session-hud: ' + e.message)); } }); }
+    catch (e) { console.log(col('dim', 'system32-hud: ' + e.message)); } }); }
 }
 module.exports = { THEMES, themeOf, clean, safeSid, setPath, rdStrict, shq, install, uninstall, configCmd, report, detectPinned, provider, toolArg, cost, fit, render, scan, vis, short };
