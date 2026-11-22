@@ -60,7 +60,7 @@ const THEMES = {
 };
 const COLOR = /^(#[0-9a-f]{6}|[\d;]{1,40})$/i; // hex, or a raw SGR parameter string
 // "theme": "monokai"  or  { "name": "monokai", "acc": "#ff00ff", "bg": "none" } (a key you give wins over the preset)
-const themeOf = t => { const o = t && typeof t === 'object' ? t : {}, out = { ...(THEMES[String(typeof t === 'string' ? t : o.name || 'default').toLowerCase()] || THEMES.default) };
+const themeOf = t => { const o = t && typeof t === 'object' ? t : {}, nm = String(typeof t === 'string' ? t : o.name || 'default').toLowerCase(), out = { ...THEMES[Object.hasOwn(THEMES, nm) ? nm : 'default'] }; // hasOwn: "constructor" must not resolve to a prototype member
   for (const k of THEME_KEYS) if (typeof o[k] === 'string' && COLOR.test(o[k])) out[k] = o[k];
   if (o.bg === 'none') delete out.bg; else if (typeof o.bg === 'string' && /^#[0-9a-f]{6}$/i.test(o.bg)) out.bg = o.bg; return out; };
 const rgb = (v, base) => v[0] === '#' ? `${base};2;${parseInt(v.slice(1, 3), 16)};${parseInt(v.slice(3, 5), 16)};${parseInt(v.slice(5), 16)}` : v;
