@@ -1,0 +1,4 @@
+{"session_id":"t1","cwd":"/tmp/x","model":{"id":"claude-opus-5-5","display_name":"Opus"},"effort":{"level":"high"},
+"workspace":{"current_dir":"/tmp/x","project_dir":"/tmp/x"},"cost":{"total_cost_usd":1.84,"total_duration_ms":600000},
+"context_window":{"context_window_size":200000,"used_percentage":41},
+"rate_limits":{"five_hour":{"used_percentage":24,"resets_at":%FIVE%},"seven_day":{"used_percentage":41,"resets_at":%SEVEN%}}}

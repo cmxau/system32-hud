@@ -1,0 +1,21 @@
+{
+  "name": "session-hud",
+  "displayName": "Claude HUD",
+  "version": "0.1.0",
+  "description": "A system24-inspired HUD: status line, session pane, working line and job-complete line.",
+  "author": {
+    "name": "cmxau"
+  },
+  "repository": "https://github.com/cmxau/system32-hud",
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "hud",
+    "usage",
+    "cost"
+  ],
+  "engines": {
+    "claude-code": ">=2.1.300"
+  },
+  "types": "./types/index.d.ts"
+}
